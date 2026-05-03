@@ -1,0 +1,57 @@
+const trg = "!allkick"
+const smsg = "Allkickd By huyukai
+//このオプ不愉快
+import {
+  loginWithPassword,
+} from "@evex/linejs";
+import { FileStorage } from "@evex/linejs/storage";
+const client = await loginWithPassword({
+  password: process.env.pass,
+  email: process.env.mail,
+  onPincodeRequest(pin) {
+      console.log(pin);
+  },
+}, { device: "IOSIPAD", storage: new FileStorage("./storage.json") });
+client.on("square:message", async (message) => {
+
+  if (message.text === trg) {
+      await message.send(smsg)
+      try {
+          const smid = await client.base.square.getSquareChat({
+              squareChatMid: message.raw.message.to,
+          });
+          const sqmid = smid.squareChat.squareMid;const amem = await client.base.square.getSquareChatMembers({
+              squareChatMid: message.raw.message.to,
+          });
+
+          const plist = (amem.squareChatMembers || [])
+              .map((member) => ({
+                  pid: member.squareMemberMid,
+                  revision: member.revision,
+              }));for (const { pid, revision } of plist) {
+              try {
+                  await client.base.square.updateSquareMember({
+                      request: {
+                          updatedAttrs: ["MEMBERSHIP_STATE"],
+                          squareMember: {
+                              squareMemberMid: pid,
+                              squareMid: sqmid,
+                              membershipState: "BANNED",revision: revision,
+                          },
+                          updatedPreferenceAttrs: [],
+                      },
+                  });
+                  console.log(`[+]Kick success->${pid}`);
+              } catch (err) {
+                  console.log(`[-]Kick failure->${pid}`, err.message);
+              }
+          }
+          console.log("All Kickd");
+      } catch (err) {
+          console.log("error->", err);
+      }
+  }
+});
+
+client.listen({ square: true });
+
